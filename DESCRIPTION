@@ -1,0 +1,46 @@
+Package: assurance
+Type: Package
+Title: Perform assurance computations for a clinical trial.
+Version: 0.99
+Date: 2015-04-01
+Authors@R: c(person("Paul", "Metcalfe", role=c("aut", "cre"),
+    email="paul.metcalfe@astrazeneca.com"),
+    person("Harry", "Southworth",
+    role="aut",
+    email="harry@dataclarityconsulting.co.uk"),
+    person("Daniel", "Dalevi",
+    role="aut",
+    email="daniel.dalevi@astrazeneca.com"),
+    person("Mary", "Jenner",
+    role="aut",
+    email="mary.jenner@astrazeneca.com"))
+Description: Assurance (unconditional power) calculations for clinical
+    trials. Works for superiority tests of Gaussian means,
+    hazard ratios, and binomial proportions.
+License: GPL (>=2)
+Imports:
+    ggplot2,
+    survival,
+    boot,
+    mvtnorm,
+    MCMCpack,
+    methods,
+    stats4,
+    Rcpp (>= 0.10.3)
+Suggests:
+    testthat,
+    MASS,
+    knitr
+VignetteBuilder: knitr
+Collate:
+    'assurance-package.R'
+    'studies.R'
+    'internal.R'
+    'assurance.R'
+    'assurance.boot.R'
+    'assuranceTable.R'
+    'binomial.R'
+    'count.R'
+    'gaussian.R'
+    'single.arm.R'
+    'survival.R'

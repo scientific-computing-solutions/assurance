@@ -1,0 +1,147 @@
+\documentclass[a4paper]{article}
+
+% \VignetteEngine{knitr::knitr}
+% \VignetteIndexEntry{Bootstrapping assurance calculations}
+
+\title{Assurance Bootstrap}
+\author{Daniel Dalevi}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+This document contains some examples introducing the bootstrap functionality available in the assurance package (version $>=0.7$). 
+
+\section{Preliminary steps}
+Before starting this tutorial you need to install the assurance package and its dependencies. For all examples below, ensure you load the library first. 
+<<load>>=
+library("assurance")
+@ 
+
+\section{Gaussian data}
+
+Requires a data set with patients (one per row) having an effect (a
+continuous measure) and which arm a patient is randomized to
+($0=$Control or $1=$Active). For more information about assumptions
+and which prior is implemented, see the assurance vignette.
+
+In this example, we simulate a simple dataset for illustrative
+purposes.
+<<>>=
+set.seed( 123 )
+data <- simulate.gauss.trial( n0 = 50, n1 = 55, my0 = 6.5, my1 = 6.0, 
+                             sd0 = 1, sd1 = 0.5  )
+str( data )
+C_ARM <- "arm"
+C_EFFECT <- "effect"
+@ 
+
+First plot the data,
+\begin{center}
+<<>>=
+boxplot( data$effect ~ data$arm, col="red", var.width=T, xlab="Arm", 
+         ylab="Effect" ) 
+@ 
+\end{center}
+
+then run $100$ bootstrap replications for a planned trial with $100$ and $120$ subjects in each arm,
+
+<<>>=
+x.boot <- assurance.boot( data, 
+                         statistic = gauss.statistic( n0=100,
+                             n1=120,
+                             repl=1e4,
+                             C_ARM=C_ARM, 
+                             C_EFFECT=C_EFFECT ),
+                         R=100 )
+@
+
+This is a simulated dataset and does not contain any systematic biases. Please, try your own data by specifying the columns using C\_ARM and C\_EFFECT. The object returned from assurance.boot is a boot object,
+<<<>>=
+class( x.boot )
+@ 
+
+You may use this to calculate various measures of uncertainty, see
+boot-package for more information.
+
+
+
+\section{Survival data}
+
+Requires a data set with patients (one per row) having information
+about events (indicator variable $0=$not happened, $1=$happened),
+time-to-event, and which arm a patient is randomized to ($0=$Control
+or $1=$Active). For more information about assumptions and which prior
+is implemented, see the assurance vignette.
+
+An example dataset is provided: sim.surv. Here are the steps needed to perform bootstrapping on survival data. 
+<<>>=
+data( sim.surv )
+str( sim.surv )
+sim.surv$arm <- as.factor( sim.surv$arm )
+@ 
+
+First plot the data,
+
+\begin{center}
+<<>>=
+kaplan.meier.plot( sim.surv, C_ARM="arm", C_TIME="days", C_EVENT="event"  )
+@ 
+\end{center}
+
+then run $500$ bootstrap replications for an assumed number of $500$ events in a planned trial.
+
+\begin{center}
+<<>>=
+x.boot <- 
+    assurance.boot( data=sim.surv, 
+                   statistic=surv.statistic( total.events=500, 
+                       C_ARM="arm", 
+                       C_TIME="days", 
+                       C_EVENT="event" ), 
+                   R=500 )
+@
+\end{center}
+
+This is a simulated dataset and may not be the best for illustrative
+purposes. Please, try your own data by specifying the columns using
+C\_ARM, C\_TIME and C\_EVENT.
+
+
+\section{Binomial data}
+
+Requires a data set with patients (one per row) having information
+about whether or not they had a response (indicator variable $0=$not
+happened, $1=$happened), and which arm a patient is randomized to
+($0=$Control or $1=$Active). For more information about assumptions
+and which prior is implemented, see the assurance vignette.
+
+In this example, we simulate a simple dataset for illustrative purposes.
+<<>>=
+set.seed( 123 )
+data <- simulate.binomial.trial( n0 = 50, n1 = 55,  p0 = 0.3, p1 = 0.1  )
+table( data$response, data$arm )
+C_ARM <- "arm"
+C_EFFECT <- "response"
+@ 
+
+Run $100$ bootstrap replications assuming a new sample size of $200$
+in the planned trial.
+
+
+<<>>=
+x.boot <- assurance.boot( data, 
+                         statistic = binomial.statistic( n=200,
+                             repl=1e5,
+                             C_ARM=C_ARM, 
+                             C_EFFECT=C_EFFECT ),
+                          R=100 )
+@ 
+
+
+This is a simulated dataset and does not contain any systematic
+biases. Please, try your own data by specifying the columns using
+C\_ARM and C\_EFFECT.
+
+\end{document}
+

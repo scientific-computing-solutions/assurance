@@ -1,0 +1,815 @@
+\documentclass[a4paper]{article}
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\newcommand\ud{\mathrm{d}}
+\newcommand\bP{\mathbb{P}}
+
+% \VignetteEngine{knitr::knitr}
+% \VignetteIndexEntry{A basic introduction to assurance}
+
+\begin{document}
+
+\title{Computing assurance}
+\author{Paul Metcalfe}
+\maketitle
+
+\tableofcontents
+
+\section{Introduction}
+
+This library simplifies some calculations for the success of a
+clinical trial given data from some initial trial.  The approach
+throughout is to produce a prior for effect size, use the initial
+trial data to produce a posterior distribution for effect size, and
+then simulate the later trial using this posterior.  This is an
+intrinsically Bayesian approach.
+
+The various different scenarios are covered, separately, in their own
+sections, so you just need to dip in to the appropriate part of the
+document to get the theory and the R code.  But before you do
+anything, it's necessary to load the assurance library into your R
+session.
+
+<<load>>=
+library(assurance)
+@ 
+
+You can now jump straight to the section of the document that you care
+about, or, if you wish, you can read a little more background.
+
+\subsection{Generalities}
+
+We suppose that we have some collection $\theta$ of parameters that
+quantify patients' response to treatment.  We start with some prior
+distribution on $\theta$, $\bP(\theta\in\ud\theta)$, and use data from
+an initial trial to derive a posterior on $\theta$:
+\begin{equation}
+  \bP(\theta\in\ud\theta|\text{data})
+  \propto \bP(\text{data} | \theta\in\ud\theta)\bP(\theta\in\ud\theta).
+\end{equation}
+
+Now, for a subsequent trial, we calculate the success probability
+$\bP(S|\theta\in\ud\theta)$, which will have something to do with the
+statistical test used to determine efficacy, and we integrate over the
+parameters $\theta$ to get the assurance
+\begin{equation}
+  \bP(S|\text{data}) = \int_\theta \bP(S|\theta\in\ud\theta)
+  \bP(\theta\in\ud\theta|\text{data})\, \ud \theta.
+\end{equation}
+
+If we suppose that we have multiple later stage trials we can handle
+this in the same way:
+\begin{equation}
+  \begin{aligned}
+    \bP(S_1, S_2, \dots|\text{data})
+    &= \int_\theta \bP(S_1, S_2, \dots |\theta\in\ud\theta)
+    \bP(\theta\in\ud\theta|\text{data})\, \ud \theta \\
+    &= \int_\theta  \left[ \prod_i
+      \bP(S_i|\theta\in \ud\theta) \right]\bP(\theta\in\ud\theta|\text{data}) 
+    \, \ud \theta.
+  \end{aligned}
+\end{equation}
+
+Where we have two-armed trials, we will always assume that we're
+trying to find out if arm $1$ is better (or, at least, not worse) than
+arm $2$.
+
+\section{Gaussian data}
+
+We suppose that we have a two-armed trial with some disease measure
+$X$; we seek to quantify the effect of treatment.  We let the response
+in group $i$ be $X_i \sim N(\mu_i, \sigma_i^2)$.  The difference in
+treatment $\Delta \sim N(\mu_{2} - \mu_1, \sigma_1^2 + \sigma_2^2)$.
+
+For a single Gaussian variable $X \sim N(\mu,\sigma^2)$ we quote
+without proof the result (Gelman et al 2003)
+\begin{equation}
+  \bP(\text{data}|\mu\in\ud\mu,\sigma^2\in \ud\sigma^2)
+  = \sigma^{-n} \exp\left( - \frac{1}{2\sigma^2}
+    \left[(n-1)s^2 + n(\bar{x} - \mu)^2 \right] \right),
+\end{equation}
+where
+\begin{align*}
+  \bar{x} &\equiv n^{-1} \sum_i x_i, \\
+  s^2 &\equiv (n - 1)^{-1} \sum_i (x_i - \bar{x})^2.
+\end{align*}
+
+\subsection{Uncommon variance}
+
+It is in fact slightly easier to work with the case in which the two
+groups do not have assumed equal variance.  We work with the
+noninformative improper prior
+\begin{equation}
+  \bP(\mu_j \in \ud \mu_j, \sigma_j^2 \in \ud \sigma_j^2) =
+  \sigma_j^{-2} \ud\mu_j\ud\sigma_j^2,
+\end{equation}
+and with judicious use of Bayes theorem find that
+\begin{equation}
+  \bP(\mu_j\in\ud\mu_j, \sigma_j^2\in\ud\sigma_j^2|\text{data})
+  = \sigma_j^{-n_j - 2} \exp\left( - \frac{1}{2\sigma_j^2} 
+    \left[(n_j-1)s_j^2 + n_j(\bar{x}_j - \mu_j)^2 \right] \right).
+\end{equation}
+We can integrate out $\mu_j$ to find that
+\begin{equation}
+  \bP(\sigma_j^2 \in \ud\sigma_j^2|\text{data}) \propto
+  \left(\sigma_j^{2}\right)^{-(n_j+1)/2} \exp \left(- \frac{(n_j - 1)s_j^2}{2
+      \sigma_j^2}\right)\, \ud\sigma_j^2,
+\end{equation}
+a scaled inverse $\chi^2$ distribution ($\text{Inv-$\chi^2$}(n_j-1,
+s_j^2)$).  Given $\sigma_j^2$, we have
+\begin{equation}\label{eq:mean_dist}
+  \mu_j | \sigma_j^2, \text{data} \sim N(\bar{x}_j, \sigma_j^2/n_j).
+\end{equation}
+
+We put all this together to find
+\begin{align*}
+  \sigma_j^2 &\sim \text{Inv-$\chi^2$}(n_j-1, s_j^2) \\
+  \mu_j | \sigma_j^2, \text{data} &\sim N(\bar{x}_j, \sigma_j^2/n_j) \\
+  \mu_1 - \mu_2 | \text{everything} &\sim N(\bar{x}_1 - \bar{x}_2,
+  \sigma_1^2/n_1 + \sigma_2^2/n_2).
+\end{align*}
+
+So we now have a distribution from which we can sample our treatment
+effect.
+
+\subsubsection{Statistical test}\label{sec:twoGaussianStats}
+
+So, we now need to determine how we decide if our trial is successful.
+There are a number of possibilities; the first is to ask if the
+difference between the sample means is significant at some level.  So
+given $\mu_{1,2}$ and $\sigma_{1,2}$ we must compute the probability that
+our later trial gives a statistically-significant result.
+
+We suppose our later trial has $N_i$ patients in arm $i$, and let
+$\bar{X}_i$ be the mean response in the $i^\text{th}$ arm.  Given
+$\mu_{i}$ and $\sigma_i$, $\bar{X}_i \sim N(\mu_i, \sigma_i^2/N_i)$,
+giving
+\begin{equation}
+  \bar{X}_1 - \bar{X}_2 \sim N(\mu_1 - \mu_2,
+  \frac{\sigma_1^2}{N_1} + \frac{\sigma_2^2}{N_2}),
+\end{equation}
+a distribution that we can sample for the mean treatment effect.  We
+can also sample the unbiased estimators of the variance:
+\begin{equation}
+  s_i^2 \sim \frac{\sigma_i^2}{N_i - 1} \chi_{N_i - 1}^2.
+\end{equation}
+where $\chi_\nu^2$ is a $\chi^2$ random variable with $\nu$ degrees
+of freedom.  We compute a $t$ statistic
+\begin{equation}
+  \frac{\bar{X}_1 - \bar{X}_2}{\sqrt{s_1^2/N_1 + s_2^2/N_2}},
+\end{equation}
+which we test for significance using a Student's $t$ distribution with
+degrees of freedom
+\begin{equation}
+  \frac{(\xi_1 + \xi_2)^2}{\xi_1^2/(N_1 - 1) + \xi_2^2/(N_2 - 1)},
+\end{equation}
+where $\xi_i\equiv s_i^2/N_i$.
+
+We can now simulate significance tests and effect size tests.
+
+\subsubsection{In R}
+
+We begin by defining our initial data and then calculating the
+assurance.
+<<uncommon.variance>>=
+initial.data <- new.gaussian(delta.mu=6,
+                             sd1=10, sd2=20, m1=50, m2=20)
+later.study <- new.twoArm(size=study.size(grp1.size=100,
+                            grp2.size=200),
+                          significance=0.05)
+assurance(initial.data, later.study, 100000)
+@ 
+
+Our assurance is approximately $69\%$. 
+
+\subsubsection{Multiple later studies}
+Now suppose we have another later study
+<<>>=
+later.study.2 <- new.twoArm(size=study.size(grp1.size=1000,
+                              grp2.size=2000),
+                            significance=0.05)
+assurance(initial.data, later.study.2, 100000)
+@ 
+
+We might be interested in knowing what the probability of succeeding in
+at least 1 of the 2 studies. To calculate this, we first have to set up
+the following object with a list of the later studies. Additional
+information needed are how many studies should succeed (here 1) as well
+as if we are looking for the probability of exactly succeeding in this
+many studies (default) or in at least as many studies.
+<<>>=
+later.studies.1.success = new.generalLaterStudy( 1, 
+  list(later.study, later.study.2), at.least=T)
+@
+
+Similarly, we can set up the calculations to see the probability of
+succeeding in both studies.
+<<>>=
+later.studies.2.success = new.generalLaterStudy( 2, 
+  list(later.study, later.study.2))
+@
+
+Now we can calculate the actual probabilities.
+<<>>=
+pts1 = assurance(initial.data, later.studies.1.success, 100000)
+pts2 = assurance(initial.data, later.studies.2.success, 100000)
+print(pts1)
+print(pts2)
+@
+
+We can observe that the probability that both later studies succeed is 
+greater than the product of the two separate assurances --- essentially 
+because whenever the first study succeeds the second succeeds.\\  
+
+We could, if we wished, have added an arbitrary number of later studies.
+
+This method can be used in the same way for all different endpoints and will
+therefore not be shown everytime.
+
+\subsection{Common variance}
+
+In this case we assume that the two treatment groups have the same (unknown)
+variance.  The calculation is slightly more involved; we find that
+\begin{align*}
+\bP(\mu_1\in\ud\mu_1, \mu_2 \in \ud\mu_2, 
+\sigma^2 \in \ud\sigma^2|\text{data}) \propto&
+\sigma^2 \sigma^{-n_1-2} \exp\left( - \frac{1}{2\sigma^2} 
+\left[(n_1-1)s^2 + n_1(\bar{x}_1 - \mu_1)^2 \right] \right) \\
+&\times \sigma^{-n_2-2} \exp\left( - \frac{1}{2\sigma^2} 
+\left[(n_2-1)s^2 + n_2(\bar{x}_2 - \mu_2)^2 \right] \right) \\
+&\times \ud\mu_1 \ud\mu_2 \ud\sigma^2,
+\end{align*}
+and integrate out $\mu_1$ and $\mu_2$ to get
+\begin{equation}
+\bP(\sigma^2 \in\ud\sigma^2 | \text{data}) \propto
+\left(\sigma^{2}\right)^{-(n_1 + n_2)/2}
+\exp - \frac{(n_1 - 1)s_1^2 + (n_2 - 1)s_2^2}{2 \sigma^2}\,\ud\sigma^2.
+\end{equation}
+Now let $\nu \equiv n_1 + n_2 - 2$ and let $\nu v^2 \equiv (n_1
+-1)s_1^2 + (n_2 - 1)s_2^2$ to find that
+\begin{equation}
+\sigma^2 | \text{data} \sim \text{Inv-$\chi^2$}(\nu, v^2).
+\end{equation}
+Given $\sigma^2$, $\mu_1$ and $\mu_2$ are independent, with
+\begin{align*}
+\mu_1| \sigma^2, \text{data} &\sim N(\bar{x}_1, \sigma^2/n_1) \\
+\mu_2| \sigma^2, \text{data} &\sim N(\bar{x}_2, \sigma^2/n_2),
+\end{align*}
+so that
+\begin{equation}
+\mu_1 - \mu_2 | \text{everything} \sim N(\bar{x}_1 - \bar{x}_2, 
+\sigma^2 / n_1 + \sigma^2 / n_2).
+\end{equation}
+
+\subsubsection{Statistical tests}
+
+We now need to determine how we decide if our later trial is
+successful.  We suppose our later trial has $N_i$ patients in arm $i$,
+and let $\bar{X}_i$ be the mean response in the $i^\text{th}$ arm.
+Given $\mu_{i}$ and $\sigma$, $\bar{X}_i \sim N(\mu_i, \sigma^2/N_i)$,
+giving
+\begin{equation}
+  \bar{X}_1 - \bar{X}_2 \sim N(\mu_1 - \mu_2,
+  \sigma^2 (N_1^{-1} + N_2^{-1}))
+\end{equation}
+a distribution that we can sample for the mean treatment effect.  We
+can also sample the unbiased estimator of the variance:
+\begin{equation}
+  s^2 \sim \frac{\sigma^2}{N_1 + N_2 - 2} \chi_{N_1 + N_2 - 2}^2
+\end{equation}
+where $\chi_\nu^2$ is a $\chi^2$ random variable with $\nu$ degrees
+of freedom.  We compute a $t$ statistic
+\begin{equation}
+  \frac{\bar{X}_1 - \bar{X}_2}{\sqrt{s^2(N_1^{-1} + N_2^{-1})}},
+\end{equation}
+which we test for significance using a Student's $t$ distribution with
+$N_1 +N_2 - 2$ degrees of freedom.
+
+We can now simulate significance tests and effect size tests.
+
+
+\subsubsection{In R}
+
+<<common.variance>>=
+initial.data <- new.gaussian(delta.mu=6,
+                             sd=10, m1=50, m2=20)
+later.study <- new.twoArm(size=study.size(grp1.size=100,
+                            grp2.size=200),
+                          significance=0.05)
+
+assurance(initial.data, later.study, 100000)
+@ 
+Our assurance is approximately $88\%$.  We can again add in multiple
+later studies and effect size hurdles.
+
+<<>>=
+later.study.2 <- new.twoArm(size=later.study@size,
+                            significance=0.05,
+                            hurdle=2)
+assurance(initial.data, later.study.2, 100000)
+@ 
+or we can check to see if the study just crosses an effect size threshold
+<<>>=
+later.study.3 <- new.twoArm(size=later.study.2@size,
+                            hurdle=2)
+assurance(initial.data, later.study.3, 100000)
+@
+
+\section{Survival data}
+
+We suppose that our prior on the treatment effect (the logarithm of
+the hazard ratio) is
+\begin{equation}
+  \Delta_0 \sim N(\mu, \sigma_0^2),
+\end{equation}
+where $\mu$ is the mean effect in the early study, $\sigma_0^2 \equiv
+n_1^{-1} + n_2^{-1}$ and $n_{1,2}$ are the number of events in each
+arm of the early study.
+
+\subsection{Statistical tests}
+
+Given $\Delta_0$, the mean effect in the later phase study $\Delta_1$
+has distribution
+\begin{equation}
+  \Delta_1 | \Delta_0 \sim N(\Delta_0, \sigma_1^2),
+\end{equation}
+where $\sigma_1^2 \equiv N_1^{-1} + N_2^{-1}$ and $N_{1,2}$ are the
+number of events in each arm of the later study.  The joint pdf of
+$\Delta_0$ and $\Delta_1$ is then multivariate normal:
+\begin{equation}\label{eq:mvn}
+\bP(\Delta_0 \in \ud\Delta_0, \Delta_1 \in \ud\Delta_1)
+\propto \exp-\tfrac{1}{2} \left( \frac{(\Delta_1 - \Delta_0)^2}{\sigma_1^2}
++ \frac{(\Delta_0 - \mu)^2}{\sigma_0^2} \right)\ud\Delta_0 \ud\Delta_1.
+\end{equation}
+
+It is of course trivial to observe that the exponent in \eqref{eq:mvn}
+can be written
+\begin{equation}
+  -\frac{1}{2}
+  \begin{pmatrix}
+    \Delta_0 - \mu \\
+    \Delta_1 - \mu
+  \end{pmatrix}^T
+  \begin{pmatrix}
+    \sigma_0^{-2} + \sigma_1^{-2} & -\sigma_1^{-2} \\
+    -\sigma_1^{-2} & \sigma_1^{-2}
+  \end{pmatrix}
+  \begin{pmatrix}
+    \Delta_0 - \mu \\
+    \Delta_1 - \mu
+  \end{pmatrix},
+\end{equation}
+making the multivariate normal explicit.  We can then integrate out
+$\Delta_0$ to get the distribution of $\Delta_1$:
+\begin{equation}
+  \Delta_1 \sim N(\mu, \sigma_0^2 + \sigma_1^2).
+\end{equation}
+
+A less manly (although more intelligent) approach is to observe that
+\begin{equation}
+  \Delta_1 | \Delta_0 \sim \Delta_0 + N(0, \sigma_1^2),
+\end{equation}
+so that
+\begin{equation}\label{eq:survival_good}
+  \Delta_1 \sim N(\mu, \sigma_0^2 + \sigma_1^2).
+\end{equation}
+
+All the possibilities boil down to requiring $\Delta_1 < C$, where $C$
+is some critical value.  Given $\Delta_0$, this is just
+\begin{equation}
+  \bP(\Delta_1 < C |\Delta_0) = \Phi(\frac{C - \Delta_0}{\sigma_1}).
+\end{equation}
+
+Using \eqref{eq:survival_good} we can do the calculation all the way
+through and find
+\begin{equation}
+  \bP(\Delta_1 < C) = \Phi(\frac{C - \mu}{\sqrt{\sigma_0^2 + \sigma_1^2}}).
+\end{equation}
+
+Considering the extension to multiple later studies, we suppose that
+our later studies have outcomes $\Delta_1$, $\Delta_2$ (etc) and
+appropriately defined $\sigma_i$.  We seek to calculate
+\begin{equation}\label{eq:mult_hazard}
+  \bP\left(\bigcap_i \Delta_i < C_i\right).
+\end{equation}
+To do this, note that the vector $(\Delta_1, \dots, \Delta_N)$ is
+multivariate normal with mean $(\mu,\dots,\mu)$ and covariance
+\begin{equation}
+  \Sigma_{ij} = \begin{cases}
+    \sigma_0^2 & i \ne j, \\
+    \sigma_i^2 + \sigma_0^2 & i=j.
+  \end{cases}
+\end{equation}
+
+We can now use standard R library routines to compute the orthant probability 
+\eqref{eq:mult_hazard}.  (In practice we do not yet do this.)
+
+\subsection{In R}
+
+Because the calculations can all be done explicitly in this case, we
+do not need to do Monte-Carlo simulations, although it's nice to check
+that they are consistent with the exact result.
+
+<<hazard>>=
+hrData <- new.survival(0.7, x1=20, x2=25)
+later <- new.twoArm(size=study.size(total.size=248),
+                    significance=0.05)
+assurance(hrData, later, 100000)
+assurance(hrData, later)
+
+later.2 <- new.twoArm(size=study.size(total.size=248),
+                      hurdle=-0.5)
+assurance(hrData, later.2, 100000)
+assurance(hrData, later.2)
+@
+
+Multiple later studies also work, but for the moment are only done by
+Monte-Carlo:
+<<>>=
+later.2 <- new.twoArm(size=study.size(total.size=248),
+                      significance=0.05)
+assurance(hrData, list(later, later.2), 100000)
+@ 
+
+
+\section{Binomial data}
+
+Here we have a two-armed trial and we seek to control the difference
+in event probabilities between the two arms: perhaps the difference in
+cure probabilities between the two arms.
+
+We have our event probabilities for each arm $p_1$ and $p_2$, and we
+assume a beta distribution with $\alpha=\beta=\tfrac{1}{2}$ for each
+to get the Jeffreys prior.  Let $k_i$ be the number of events in arm
+$i$, and suppose there to be $n_i$ patients in arm $i$.  Now, by
+judicious application of the binomial distribution and Bayes' theorem,
+we find that
+\begin{equation}
+  \bP(p_i\in\ud p_i| k_i, n_i) \propto 
+  p_i^{k_i - \tfrac{1}{2}} (1 - p_i)^{n_i - k_i - \tfrac{1}{2}}\, \ud p_i;
+\end{equation}
+that is
+\begin{equation}
+  p_i | k_i, n_i \sim \text{Beta}(k_i + \tfrac{1}{2}, n_i - k_i + \tfrac{1}{2}).
+\end{equation}
+
+\subsection{Statistical test}
+
+We suppose we have a later trial with $N_i$ patients in arm $i$.  If
+we let $K_i$ be the number of cures in arm $i$, we find $K_i | p_i
+\sim \text{Bin}(N_i, p_i)$, and the observed cure probability
+$\hat{p}_i = K_i / N_i$.  So we can test for effect size and also
+perform $z$ tests; our test statistic is
+\begin{equation}
+  \frac{\hat{p}_1 - \hat{p}_2}{\sqrt{\hat{p}_1 (1 - \hat{p}_1) / N_1 + 
+      \hat{p}_2 ( 1 - \hat{p}_2) / N_2}}
+\end{equation}
+
+We can simulate effect size and statistical significance tests.
+
+\subsection{In R}
+
+<<binomial>>=
+binData <- new.binomial(x1=18, m1=20, x2=15, m2=20)
+later <- new.binomialStudy(size=study.size(total.size=200),
+                           significance=0.05)
+assurance(binData, later, 100000)
+
+later.2 <- new.binomialStudy(size=later@size,
+                             significance=0.05,
+                             hurdle=0.05)
+assurance(binData, later.2, 100000)
+
+later.3 <- new.binomialStudy(size=later@size,
+                             hurdle=0.05)
+assurance(binData, later.3, 100000)
+@ 
+
+Non-inferiority tests are also possible
+<<>>=
+earlyStudy <- new.binomial(x1=70, m1=82, x2=70, m2=82)
+later <- new.binomialStudy(size=study.size(grp1.size=200, grp2.size=200),
+                           margin=-0.1,
+                           significance=0.05,
+                           method="bl")
+
+assurance(earlyStudy, later, 100000)
+@ 
+
+\section{Single-arm study: binary endpoint}
+
+We suppose that we have a single arm study and that the parameter we
+wish to estimate is $p$, the probability that a patient is cured.
+
+Our prior distribution on $p$ is the beta distribution (see
+\S\ref{sec:beta-func}). we suppose that we have an initial trial with
+$N_s$ successes and $N_f$ failures.  We derive our posterior for $p$
+with Bayes theorem:
+\begin{equation}
+  \bP(p \in \ud p| N_s, N_f) \propto \bP(N_s, N_f | p \in \ud p) \bP(p\in\ud p).
+\end{equation}
+
+Now we know the prior $\bP(p \in \ud p)$, and computing $\bP(N_s, N_f
+| p \in \ud p)$ is an application of the binomial distribution:
+\begin{equation}
+  \bP(N_s, N_f | p \in \ud p) = \binom{N_s + N_f}{N_s} p^{N_s} (1 - p)^{N_f}.
+\end{equation}
+
+Pushing the calculation through, we find that the posterior
+distribution for $p$ is
+\begin{equation}\label{eq:single-arm-posterior}
+  \bP(p \in \ud p| N_s, N_f) = B(N_s + \alpha, N_f + \beta)^{-1} 
+  p^{N_s + \alpha - 1} (1 - p)^{N_f + \beta - 1}\, \ud p,
+\end{equation}
+a beta distribution with parameters $N_s + \alpha$ and $N_f + \beta$.
+This is just a matter of integration; the convenience of this
+integration is why we chose a beta distribution in the first place.
+
+
+\subsection{Statistical tests}
+
+We now consider a later trial with $N$ patients, and wish to compute
+the success probability of this later trial.  We suppose that we want
+$K$ or more successes in order for this later trial to succeed.
+
+Now the probability of getting $k$ successes given $N_s$ and $N_f$ is,
+by application of the binomial distribution and 
+\eqref{eq:single-arm-posterior},
+\begin{equation}\label{eq:single-arm-exact}
+  \begin{aligned}
+  \bP(k | N_s, N_f) &= \int_{p=0}^1 \bP(k|p \in \ud p) \bP(p\in \ud p|N_s, N_f)\, \ud p \\
+  &=
+  \frac{\binom{N}{k}}{B(N_s + \alpha, N_f + \beta)}
+  \int_{p=0}^1 p^{k + N_s + \alpha - 1} (1-p)^{N - k + N_f + \beta - 1}\, \ud p \\
+  &= \binom{N}{k} \frac{B(k + N_s + \alpha,
+    N - k + N_f + \beta)}{B(N_s + \alpha, N_f + \beta)},
+\end{aligned}
+\end{equation}
+with use of \eqref{eq:beta-function} to do the integral. (This
+distribution is apparently the beta-binomial distribution.)
+
+So supposing that we want at least $K$ patients to be cured in our
+second trial, we must calculate
+\begin{equation}\label{eq:single_success}
+  B(N_s + \alpha, N_f + \beta)^{-1} 
+    \sum_{k = K}^N \binom{N}{k} B(k + N_s + \alpha,
+    N - k + N_f + \beta).
+\end{equation}
+
+Now, lets consider a succession of later trials, each with $N_i$
+patients and we want $K_i$ or more successes in trial $i$.  Given $p$,
+the probability of $K_i$ or more successes in trial $i$ is
+\begin{equation}
+  I_p(K_i, N_i + 1 - K_i),
+\end{equation}
+where $I_p(\alpha, \beta)$ is the regularized incomplete beta function
+\eqref{eq:reg_inc_beta}.
+
+So to handle multiple later trials, we must compute
+\begin{equation}\label{eq:mult_success}
+  B(N_s + \alpha, N_f + \beta)^{-1} \int_{p=0}^1 
+  \left[\prod_i I_p(K_i, N_i + 1 - K_i)\right] p^{N_s + \alpha - 1} (1-p)^{N_f + \beta - 1}\, \ud p.
+\end{equation}
+One presumes that \eqref{eq:single_success} may be derived from
+\eqref{eq:mult_success} by some means or other; the expansion
+\eqref{eq:inc_beta_exp} seems relevant.  In any case, evaluating
+\eqref{eq:mult_success} is beyond my powers when fuelled by instant
+coffee, so we revert to quadrature to do this.  This may be
+interestingly inaccurate when $N_s + \alpha \le 1$ or $N_f + \beta \le
+1$.
+
+\subsection{In R}
+
+To do this in R, we start by defining our initial trial, with $15$
+successes out of $30$ patients.
+<<>>=
+initial.data <- new.singleArm(15, 30)
+@ 
+
+We now compute the assurance supposing a hundred patient trial with a
+desired cure rate of $43\%$.  This does a Monte--Carlo simulation of
+the subsequent trial:
+<<>>=
+later <- new.oneArmResponseRate(100, 0.43)
+assurance(initial.data, later, 1000000)
+@ 
+
+We can also do it analytically using \eqref{eq:single-arm-exact}:
+<<>>=
+assurance(initial.data, later)
+@
+
+If we want multiple later studies, we can try
+<<>>=
+later.2 <- new.oneArmResponseRate(1000, 0.43)
+assurance(initial.data, list(later, later.2), 10000)
+@ 
+or if we want to check that we're handling multiple later studies correctly
+<<>>=
+later.3 <- new.oneArmResponseRate(1000, 0)
+assurance(initial.data, list(later, later.3), 1000000)
+@
+which looks plausible enough --- if there isn't a stringent success
+criterion on the second study the assurance is controlled by the first
+study.
+
+\subsection{Validation}
+
+We also check this against Andy Stone's spreadsheet; $\alpha=\beta=1$
+was used to get a uniform distribution; the spreadsheet result was
+$0.84057583$.  We check both the exact calculation and the
+Monte--Carlo simulation.
+
+<<>>=
+assurance(new.singleArm(18, 48, 1, 1),
+          new.oneArmResponseRate(77, 0.29))
+assurance(new.singleArm(18, 48, 1, 1),
+          new.oneArmResponseRate(77, 0.29), 100000)
+@
+
+Happy with those results, for our next trick we assess the effect of
+the shape parameters $\alpha$ and $\beta$.  We suppose a small initial
+trial with just ten patients, and see the effect on a later trial.
+
+<<>>=
+simulate.trial <- function(num.success, num.patients, later, shape) {
+  trial <- new.singleArm(num.success, num.patients, shape, shape)
+  assurance(trial, later)
+}
+
+num.patients <- 10
+num.success <- seq(0, num.patients)
+later <- new.oneArmResponseRate(77, 0.29)
+
+jeffreys <- sapply(num.success, simulate.trial, num.patients, later, 0.5)
+uniform <- sapply(num.success, simulate.trial, num.patients, later, 1)
+@ 
+
+We also check the maximum difference between the Jeffreys and uniform prior:
+<<>>=
+index <- which.max(abs(jeffreys - uniform))
+jeffreys[[index]]
+uniform[[index]]
+num.success[[index]]
+@
+and these results are also in figure \ref{fig:prior-plot}.  In
+general, the effect of the shape parameters of the prior will be
+greatest when there are few events in the initial trial.  It isn't
+\emph{quite} as obvious as that: we need there to be few enough events
+in the initial trial for the prior to make a difference to the
+posterior, but we need enough events for there to be a reasonable
+probability of success in the later trial.
+
+<<prior-plot, echo=FALSE, fig.cap="Plot of assurance as a function of number of successes for a 10-patient trial.  The effect of the shape parameter of the prior is shown.">>=
+plot(num.success, jeffreys, pch=21,
+     xlab="number of successes", ylab="assurance")
+points(num.success, uniform, pch=23)
+legend(6, 0.2, c("Jeffreys prior", "uniform prior"), pch=c(21, 23))
+@ 
+
+\section{Count data}
+
+Let's consider count data, modelled as Poisson, from which we seek to
+extract rates.
+
+We suppose an uninformative prior on the rate: $\bP(\lambda\in
+\ud\lambda) \propto \lambda^{-1} \ud\lambda$.  Let patient $i$
+experience $n_i$ events in a time $t_i$; we find
+\begin{equation}
+  \bP(\lambda \in \ud \lambda | \{n_i, t_i\})
+  \propto \lambda^{\sum n_i - 1} e^{-\lambda \sum t_i}.
+\end{equation}
+We find that our posterior on $\lambda$ is $\Gamma(N, T)$, which has
+mean $N/T$ and variance $N/T^2$, where $N \equiv \sum_i n_i$ and $T
+\equiv \sum_i t_i$.  We now introduce an artificial overdispersion
+parameter $\phi$ to get a $\Gamma(N/\phi, T/\phi)$ posterior; this
+maintains the mean rate, but inflates the posterior variance of the
+rate to $\phi N / T^2$.  Using $\phi > 1$ just corresponds to
+weakening our prior information somewhat.
+
+Now, the number of events experienced by a fresh patient in a time $t$
+has a Poisson distribution with mean $\lambda t$ given $\lambda$, and
+the total number of events experienced by $N'$ fresh patients in a
+total time $T'$ has a Poisson distribution with mean $\lambda T'$
+given $\lambda$.
+
+We are now equipped to simulate the number of events observed in a
+fresh trial; we now consider our statistical test.  Given simulated
+Phase III results ($n_c$ events observed in a total time $t_c$ for the
+comparator and $n_d$ events observed in a total time $t_d$ for the
+test compound), we compute the log rate ratio
+\begin{equation}
+  \mathrm{lr} = \log \left( \frac{n_d}{t_d} \frac{t_c}{n_c} \right),
+\end{equation}
+which has an approximate standard deviation $(n_d^{-1} +
+n_c^{-1})^{1/2}$.  We allow a similar inflation of the variance to give
+\begin{equation}
+  \sigma = \left(\frac{\phi_d}{n_d} + \frac{\phi_c}{n_c} \right)^{1/2}
+\end{equation}
+
+Our results are then statistically significant if $0 \not \in
+(\mathrm{lr} - z_\gamma \sigma, \mathrm{lr} + z_\gamma \sigma)$, where
+$z_\gamma$ is the appropriate quantile of the standard normal.
+
+<<>>=
+count.data <-
+  new.overdispersedPoisson(grp1.count=27,
+                           grp1.overdispersion=1.6,
+                           grp1.time.at.risk=97,
+                           grp2.count=56,
+                           grp2.overdispersion=1.6,
+                           grp2.time.at.risk=82)
+
+later.study <-
+  new.overdispersedPoissonStudy(duration=56./52,
+                                grp1.size=228,
+                                grp2.size=228,
+                                grp1.overdispersion=1.6,
+                                grp2.overdispersion=1.6,
+                                significance=0.04)
+
+assurance(count.data, later.study, nsim=100000)
+@ 
+
+An alternate analysis for the Phase III trial is as negative binomial
+data.  We suppose gamma distributed random effects on each patient's
+event rate, and, for each patient, sample the number of events in a
+time $T$, allowing us to simulate a Phase III trial.  We then analyse
+the subsequent data with a negative binomial model, with likelihood
+\begin{equation}
+  \prod_i \left(\frac{\Lambda_i T \xi}{1 + \Lambda_i T \xi}\right)^{n_i} \left(\frac{1}{1 + \Lambda_i T\xi}\right)^{\xi^{-1}}
+  \frac{\Gamma(\xi^{-1} + n_i)}{\Gamma(\xi^{-1}) \Gamma(n_i + 1)},
+\end{equation}
+where $\log \Lambda_i = \text{intercept} + \text{effect} \times
+\text{treatment}_i$.  We acquire values for the intercept, effect, and
+$\epsilon$ parameters by maximum likelihood, and test the effect
+parameter for statistical significance using a Gaussian approximation.
+It should perhaps be appreciated that there is a significant amount of
+work in fitting these negative binomial models; this is not the
+fastest%
+\footnote{Despite, for what it's worth, a significant amount of
+  optimization in the underlying code.}.
+
+<<>>=
+later.study <-
+  new.negativeBinomialStudy(duration=56./52,
+                            grp1.size=228,
+                            grp2.size=228,
+                            overdispersion=1.6,
+                            significance=0.04)
+
+assurance(count.data, later.study, nsim=10000)
+
+assuranceTable(count.data, later.study, nsim=10000)
+@ 
+
+
+\section{Background mathematics}
+
+\subsection{The beta function and beta distribution}\label{sec:beta-func}
+
+The beta function is defined by the integral
+\begin{equation}\label{eq:beta-function}
+  B(\alpha,\beta) \equiv \int_{p=0}^1 p^{\alpha - 1}(1 - p)^{\beta - 1}\, \ud p
+\end{equation}
+when $\alpha > 0$ and $\beta > 0$.  It can be expressed in terms of
+the gamma function as
+\begin{equation}
+  \label{eq:beta-gamma}
+  B(\alpha, \beta) = \frac{\Gamma(\alpha) \Gamma(\beta)}{\Gamma(\alpha + \beta)},
+\end{equation}
+and hence analytically continued to much of the rest of the complex
+plane.  When $\alpha$ and $\beta$ are both naturals, we use
+$\Gamma(\alpha) = (\alpha - 1)!$ to get
+\begin{equation}
+  \label{eq:beta-fact}
+  B(\alpha,\beta) = \frac{(\alpha - 1)! (\beta - 1)!}{(\alpha + \beta - 1)!}.
+\end{equation}
+
+The beta distribution $\text{Beta}(\alpha,\beta)$ is a distribution
+on $(0,1)$, with probability density function
+\begin{equation}\label{eq:beta-dist}
+  \bP(p\in\ud p) = B(\alpha, \beta)^{-1} p^{\alpha - 1}(1 - p)^{\beta - 1}\, \ud p.
+\end{equation}
+
+This distribution is the conjugate prior for binomial events; normally
+one would take $\alpha=\beta=\tfrac{1}{2}$ to get the Jeffreys prior;
+a uniform distribution on $(0,1)$ can be obtained with
+$\alpha=\beta=1$.
+
+An incomplete beta function
+\begin{equation}
+  \label{eq:reg_inc_beta}
+  I_x(\alpha, \beta) \equiv B(\alpha, \beta)^{-1}
+  \int_0^x t^{\alpha - 1} ( 1 - t )^{\beta - 1}\, \ud t
+\end{equation}
+is also useful (as, for instance, the cdf for a binomial distribution).
+
+The regularized incomplete beta function can be expanded as
+\begin{equation}\label{eq:inc_beta_exp}
+  I_p(m, n-m+1) = \sum_{j=m}^n \binom{n}{j} p^j (1-p)^{n - j}.
+\end{equation}
+
+
+\end{document}

@@ -1,0 +1,103 @@
+\documentclass[a4paper]{article}
+
+% \VignetteEngine{knitr::knitr}
+% \VignetteIndexEntry{Assurance and correlated endpoints}
+
+\title{Multiple endpoints part 1: Gaussian correlated endpoints}
+\author{Daniel Dalevi and Mary Jenner}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This document gives a brief example on how to use the multiple
+endpoints functionality in the assurance package (version >=0.8) using
+simulated data. The current version only incorporates correlated
+gaussian endpoints (using the independence Jeffreys prior) and is a
+first step towards a more general solution. For more details see [1].
+
+\section{Preliminary steps}
+
+Before starting this tutorial you need to install the assurance
+package and its dependencies. For all examples below, ensure that you
+load the library first.
+
+<<load>>=
+library("assurance")
+@ 
+
+\section{R implementation}
+
+If you are to analyse real data, you should skip the simulation step.
+
+\subsection{Simulating Phase II data}
+
+We first simulate an earlier trial to have some data to work
+with. Here $m$ is the number of endpoints, $n_0$ is the size of the
+control and treatment arms and the $corr$ matrix contains the
+correlations. The means of the two arms, for each endpoint, is
+specified in the $initial.*.mean$ vectors. Running this code will
+produce two mean vectors ($y.control$ and $y.trt$) and two sum of
+square matrices about the sample means ($S.control$ and $S.trt$) -
+these will be input to the assurance step (as $ss.mat1$ and $ss.mat2$)
+and should be given for any real analysis. Note, these matrices equal
+the covariance matrices times $n - 1$.
+
+<<>>=
+library("mvtnorm")
+set.seed( 20140311 )
+
+m <- 3
+n0 <- c( 100, 100 )
+initial.control.mean <- c( 2, 2, 2 )
+initial.trt.mean     <- c( 3, 3.2, 3.2 )
+
+corr <- matrix(c( 1.00, 0.20, 0.30,
+                 0.20, 1.00, 0.50,
+                 0.30, 0.50, 1.00),3,3)
+sd <- diag( c( 3, 1.5, 2 ) )
+sigma0 <- sd%*%corr%*%sd
+
+control <- rmvnorm( n=n0[1], mean=initial.control.mean, sigma=sigma0 )
+trt     <- rmvnorm( n=n0[2], mean=initial.trt.mean,     sigma=sigma0 )
+
+y.control <- colMeans( control )
+S.control <- ( t( control ) - y.control )%*%t( t( control ) - y.control )
+
+y.trt <- colMeans( trt )
+S.trt <- ( t( trt ) - y.trt ) %*% t( t( trt ) - y.trt )
+@ 
+
+\subsection{Run assurance}
+The following steps are then required to calculate assurances. 
+
+<<>>=
+initial.data <- new.mult.gaussian( mu1 = y.control,
+                                   mu2 = y.trt,
+                                   ss.mat1 = S.control, 
+                                   ss.mat2 = S.trt,
+                                   m1 = n0[1], 
+                                   m2 = n0[2] )
+
+later.study  <- new.twoArm( size = study.size( grp1.size=250, grp2.size=250 ), 
+                            significance=0.05, 
+                            test.me = "Uncorrected.Significant", 
+                            m1 = n0[1],
+                            m2 = n0[2] )
+
+
+assurance.multiple.endpoints( initial.data, later.study, 1e3 )
+@ 
+
+The first three assurance values are for each of the three endpoints
+separately. The second value is the assurance of having at least one
+endpoint significant whereas the last is the assurance of having all
+endpoints significant. Currently no multiplicity adjustments have been
+made (unadjusted).
+
+\section{References}
+1. Bayesian Data Analysis (3d edition), pp 72-74, Gelman et al (2014)
+\end{document}
+
