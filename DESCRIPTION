@@ -32,6 +32,7 @@ Suggests:
     MASS,
     knitr
 VignetteBuilder: knitr
+URL: https://github.com/scientific-computing-solutions/assurance
 Collate:
     'assurance-package.R'
     'studies.R'
