@@ -19,9 +19,6 @@ Description: Assurance (unconditional power) calculations for clinical
     hazard ratios, and binomial proportions.
 License: GPL (>=2)
 Imports:
-    ggplot2,
-    survival,
-    boot,
     mvtnorm,
     MCMCpack,
     methods,
@@ -38,7 +35,6 @@ Collate:
     'studies.R'
     'internal.R'
     'assurance.R'
-    'assurance.boot.R'
     'assuranceTable.R'
     'binomial.R'
     'count.R'
