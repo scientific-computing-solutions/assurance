@@ -288,32 +288,22 @@ namespace {
     double duration;
   };
 
-
-  SEXP fitNegBinData(SEXP coeff, SEXP count, SEXP flag,
-		     SEXP log_lambda, SEXP duration) {
-    BEGIN_RCPP
-      Rcpp::NumericVector res(Rcpp::clone(coeff));
-    CostData cost(count, flag, log_lambda, Rcpp::as<double>(duration));
-    if (res.size() != 1) {
-      throw std::invalid_argument("Bad size for coefficients.");
-    }
-
-    res[0] = cost.best(res[0]);
-
-    Rcpp::List result;
-    result["par"] = res;
-    result["cov"] = cost.covariance(res[0]);
-    return result;
-    END_RCPP
-      }
 }
 
+//[[Rcpp::export]]
+Rcpp::List fitNegBinData(Rcpp::NumericVector coeff, Rcpp::NumericVector count, Rcpp::NumericVector flag,
+     Rcpp::NumericVector log_lambda, double duration) {
+  Rcpp::NumericVector res(Rcpp::clone(coeff));
+  CostData cost(count, flag, log_lambda, duration);
+  if (res.size() != 1) {
+    throw std::invalid_argument("Bad size for coefficients.");
+  }
 
-static R_CallMethodDef callMethods[] = {
-  {".call.fitNegBinData", (DL_FUNC) &fitNegBinData, 5},
-  NULL
-};
+  res[0] = cost.best(res[0]);
 
-RcppExport void R_init_assurance(DllInfo *info) {
-  R_registerRoutines(info, NULL, callMethods, NULL, NULL);
+  Rcpp::List result;
+  result["par"] = res;
+  result["cov"] = cost.covariance(res[0]);
+  return result;
 }
+

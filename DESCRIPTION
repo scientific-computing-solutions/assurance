@@ -1,8 +1,8 @@
 Package: assurance
 Type: Package
 Title: Perform assurance computations for a clinical trial.
-Version: 0.99
-Date: 2015-04-01
+Version: 0.999
+Date: 2023-06-27
 Authors@R: c(person("Paul", "Metcalfe", role=c("aut", "cre"),
     email="paul.metcalfe@astrazeneca.com"),
     person("Harry", "Southworth",
@@ -23,14 +23,17 @@ Imports:
     MCMCpack,
     methods,
     stats4,
-    Rcpp (>= 0.10.3)
+    Rcpp (>= 1.0.10)
+LinkingTo: Rcpp
 Suggests:
     testthat,
     MASS,
     knitr
 VignetteBuilder: knitr
 URL: https://github.com/scientific-computing-solutions/assurance
+Encoding: UTF-8
 Collate:
+    'RcppExports.R'
     'assurance-package.R'
     'studies.R'
     'internal.R'
@@ -41,3 +44,4 @@ Collate:
     'gaussian.R'
     'single.arm.R'
     'survival.R'
+RoxygenNote: 7.2.3

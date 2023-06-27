@@ -108,7 +108,7 @@ NULL
 #' @keywords design
 #' @import methods stats4
 #' @importFrom Rcpp sourceCpp
-#' @useDynLib assurance .call.fitNegBinData
+#' @useDynLib assurance, .registration=TRUE
 NULL
 
 

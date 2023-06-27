@@ -95,8 +95,7 @@ fit.nb <- function(comparatorEvents, testEvents, duration) {
   coeffs <- c(max(0.01, eps.start))
 
   ## and now fit
-  within(.Call(.call.fitNegBinData,
-               coeffs, count, flag, log.lambda, duration),
+  within(fitNegBinData(coeffs, count, flag, log.lambda, duration),
          {
            par <- c(meanIntercept, meanTest, par)
          })
