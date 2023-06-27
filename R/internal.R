@@ -1,7 +1,7 @@
 # common utility functions used herein
 
 #' @name internal
-assert <- function(condition, msg="assertion failed") {
+assert <- function(condition, msg = "assertion failed") {
   # assert the condition to be true
   #
   # Args:
@@ -22,7 +22,7 @@ is.wholenumber <- function(num) {
   # Returns:
   #   boolean
   is.integer(num) ||
-  (is.numeric(num) && identical(num, round(num), num.eq=FALSE))
+    (is.numeric(num) && identical(num, round(num), num.eq = FALSE))
 }
 
 #' @name internal
@@ -58,7 +58,7 @@ is.probability <- function(value) {
 
 ## Check the significance of this result
 #' @name internal
-check.significance <- function(alpha, expr, frame=parent.frame()) {
+check.significance <- function(alpha, expr, frame = parent.frame()) {
   if (is.na(alpha)) {
     TRUE
   } else {
@@ -81,12 +81,14 @@ check.hurdle <- function(values, possible.hurdle) {
 fit.nb <- function(comparatorEvents, testEvents, duration) {
   ## can get the treatment effect on rate exactly
   meanIntercept <- log(mean(comparatorEvents) / duration)
-  meanTest      <- log(mean(testEvents) / duration) - meanIntercept
+  meanTest <- log(mean(testEvents) / duration) - meanIntercept
 
   ## wrap up everything for C++ code
   count <- c(comparatorEvents, testEvents)
-  flag  <- c(rep(0, length(comparatorEvents)),
-             rep(1, length(testEvents)))
+  flag <- c(
+    rep(0, length(comparatorEvents)),
+    rep(1, length(testEvents))
+  )
   log.lambda <- meanIntercept + flag * meanTest
 
   ## get initial guess of dispersion parameter
@@ -95,9 +97,7 @@ fit.nb <- function(comparatorEvents, testEvents, duration) {
   coeffs <- c(max(0.01, eps.start))
 
   ## and now fit
-  within(fitNegBinData(coeffs, count, flag, log.lambda, duration),
-         {
-           par <- c(meanIntercept, meanTest, par)
-         })
-
+  within(fitNegBinData(coeffs, count, flag, log.lambda, duration), {
+    par <- c(meanIntercept, meanTest, par)
+  })
 }

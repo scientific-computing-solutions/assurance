@@ -14,5 +14,5 @@ test_that("sampling works", {
   nsim <- 100000
   sample <- samplePosterior(fred, nsim)
   expect_equal(length(sample), nsim)
-  expect_equal(mean(sample@log.hazard.ratio), log(0.3), tolerance=1e-2)
+  expect_equal(mean(sample@log.hazard.ratio), log(0.3), tolerance = 1e-2)
 })

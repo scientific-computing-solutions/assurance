@@ -173,11 +173,17 @@ We can now simulate significance tests and effect size tests.
 We begin by defining our initial data and then calculating the
 assurance.
 <<uncommon.variance>>=
-initial.data <- new.gaussian(delta.mu=6,
-                             sd1=10, sd2=20, m1=50, m2=20)
-later.study <- new.twoArm(size=study.size(grp1.size=100,
-                            grp2.size=200),
-                          significance=0.05)
+initial.data <- new.gaussian(
+  delta.mu = 6,
+  sd1 = 10, sd2 = 20, m1 = 50, m2 = 20
+)
+later.study <- new.twoArm(
+  size = study.size(
+    grp1.size = 100,
+    grp2.size = 200
+  ),
+  significance = 0.05
+)
 assurance(initial.data, later.study, 100000)
 @ 
 
@@ -186,9 +192,13 @@ Our assurance is approximately $69\%$.
 \subsubsection{Multiple later studies}
 Now suppose we have another later study
 <<>>=
-later.study.2 <- new.twoArm(size=study.size(grp1.size=1000,
-                              grp2.size=2000),
-                            significance=0.05)
+later.study.2 <- new.twoArm(
+  size = study.size(
+    grp1.size = 1000,
+    grp2.size = 2000
+  ),
+  significance = 0.05
+)
 assurance(initial.data, later.study.2, 100000)
 @ 
 
@@ -199,21 +209,25 @@ information needed are how many studies should succeed (here 1) as well
 as if we are looking for the probability of exactly succeeding in this
 many studies (default) or in at least as many studies.
 <<>>=
-later.studies.1.success = new.generalLaterStudy( 1, 
-  list(later.study, later.study.2), at.least=T)
+later.studies.1.success <- new.generalLaterStudy(1,
+  list(later.study, later.study.2),
+  at.least = T
+)
 @
 
 Similarly, we can set up the calculations to see the probability of
 succeeding in both studies.
 <<>>=
-later.studies.2.success = new.generalLaterStudy( 2, 
-  list(later.study, later.study.2))
+later.studies.2.success <- new.generalLaterStudy(
+  2,
+  list(later.study, later.study.2)
+)
 @
 
 Now we can calculate the actual probabilities.
 <<>>=
-pts1 = assurance(initial.data, later.studies.1.success, 100000)
-pts2 = assurance(initial.data, later.studies.2.success, 100000)
+pts1 <- assurance(initial.data, later.studies.1.success, 100000)
+pts2 <- assurance(initial.data, later.studies.2.success, 100000)
 print(pts1)
 print(pts2)
 @
@@ -292,11 +306,17 @@ We can now simulate significance tests and effect size tests.
 \subsubsection{In R}
 
 <<common.variance>>=
-initial.data <- new.gaussian(delta.mu=6,
-                             sd=10, m1=50, m2=20)
-later.study <- new.twoArm(size=study.size(grp1.size=100,
-                            grp2.size=200),
-                          significance=0.05)
+initial.data <- new.gaussian(
+  delta.mu = 6,
+  sd = 10, m1 = 50, m2 = 20
+)
+later.study <- new.twoArm(
+  size = study.size(
+    grp1.size = 100,
+    grp2.size = 200
+  ),
+  significance = 0.05
+)
 
 assurance(initial.data, later.study, 100000)
 @ 
@@ -304,15 +324,19 @@ Our assurance is approximately $88\%$.  We can again add in multiple
 later studies and effect size hurdles.
 
 <<>>=
-later.study.2 <- new.twoArm(size=later.study@size,
-                            significance=0.05,
-                            hurdle=2)
+later.study.2 <- new.twoArm(
+  size = later.study@size,
+  significance = 0.05,
+  hurdle = 2
+)
 assurance(initial.data, later.study.2, 100000)
 @ 
 or we can check to see if the study just crosses an effect size threshold
 <<>>=
-later.study.3 <- new.twoArm(size=later.study.2@size,
-                            hurdle=2)
+later.study.3 <- new.twoArm(
+  size = later.study.2@size,
+  hurdle = 2
+)
 assurance(initial.data, later.study.3, 100000)
 @
 
@@ -412,14 +436,18 @@ do not need to do Monte-Carlo simulations, although it's nice to check
 that they are consistent with the exact result.
 
 <<hazard>>=
-hrData <- new.survival(0.7, x1=20, x2=25)
-later <- new.twoArm(size=study.size(total.size=248),
-                    significance=0.05)
+hrData <- new.survival(0.7, x1 = 20, x2 = 25)
+later <- new.twoArm(
+  size = study.size(total.size = 248),
+  significance = 0.05
+)
 assurance(hrData, later, 100000)
 assurance(hrData, later)
 
-later.2 <- new.twoArm(size=study.size(total.size=248),
-                      hurdle=-0.5)
+later.2 <- new.twoArm(
+  size = study.size(total.size = 248),
+  hurdle = -0.5
+)
 assurance(hrData, later.2, 100000)
 assurance(hrData, later.2)
 @
@@ -427,8 +455,10 @@ assurance(hrData, later.2)
 Multiple later studies also work, but for the moment are only done by
 Monte-Carlo:
 <<>>=
-later.2 <- new.twoArm(size=study.size(total.size=248),
-                      significance=0.05)
+later.2 <- new.twoArm(
+  size = study.size(total.size = 248),
+  significance = 0.05
+)
 assurance(hrData, list(later, later.2), 100000)
 @ 
 
@@ -471,28 +501,36 @@ We can simulate effect size and statistical significance tests.
 \subsection{In R}
 
 <<binomial>>=
-binData <- new.binomial(x1=18, m1=20, x2=15, m2=20)
-later <- new.binomialStudy(size=study.size(total.size=200),
-                           significance=0.05)
+binData <- new.binomial(x1 = 18, m1 = 20, x2 = 15, m2 = 20)
+later <- new.binomialStudy(
+  size = study.size(total.size = 200),
+  significance = 0.05
+)
 assurance(binData, later, 100000)
 
-later.2 <- new.binomialStudy(size=later@size,
-                             significance=0.05,
-                             hurdle=0.05)
+later.2 <- new.binomialStudy(
+  size = later@size,
+  significance = 0.05,
+  hurdle = 0.05
+)
 assurance(binData, later.2, 100000)
 
-later.3 <- new.binomialStudy(size=later@size,
-                             hurdle=0.05)
+later.3 <- new.binomialStudy(
+  size = later@size,
+  hurdle = 0.05
+)
 assurance(binData, later.3, 100000)
 @ 
 
 Non-inferiority tests are also possible
 <<>>=
-earlyStudy <- new.binomial(x1=70, m1=82, x2=70, m2=82)
-later <- new.binomialStudy(size=study.size(grp1.size=200, grp2.size=200),
-                           margin=-0.1,
-                           significance=0.05,
-                           method="bl")
+earlyStudy <- new.binomial(x1 = 70, m1 = 82, x2 = 70, m2 = 82)
+later <- new.binomialStudy(
+  size = study.size(grp1.size = 200, grp2.size = 200),
+  margin = -0.1,
+  significance = 0.05,
+  method = "bl"
+)
 
 assurance(earlyStudy, later, 100000)
 @ 
@@ -622,10 +660,14 @@ $0.84057583$.  We check both the exact calculation and the
 Monte--Carlo simulation.
 
 <<>>=
-assurance(new.singleArm(18, 48, 1, 1),
-          new.oneArmResponseRate(77, 0.29))
-assurance(new.singleArm(18, 48, 1, 1),
-          new.oneArmResponseRate(77, 0.29), 100000)
+assurance(
+  new.singleArm(18, 48, 1, 1),
+  new.oneArmResponseRate(77, 0.29)
+)
+assurance(
+  new.singleArm(18, 48, 1, 1),
+  new.oneArmResponseRate(77, 0.29), 100000
+)
 @
 
 Happy with those results, for our next trick we assess the effect of
@@ -662,10 +704,12 @@ posterior, but we need enough events for there to be a reasonable
 probability of success in the later trial.
 
 <<prior-plot, echo=FALSE, fig.cap="Plot of assurance as a function of number of successes for a 10-patient trial.  The effect of the shape parameter of the prior is shown.">>=
-plot(num.success, jeffreys, pch=21,
-     xlab="number of successes", ylab="assurance")
-points(num.success, uniform, pch=23)
-legend(6, 0.2, c("Jeffreys prior", "uniform prior"), pch=c(21, 23))
+plot(num.success, jeffreys,
+  pch = 21,
+  xlab = "number of successes", ylab = "assurance"
+)
+points(num.success, uniform, pch = 23)
+legend(6, 0.2, c("Jeffreys prior", "uniform prior"), pch = c(21, 23))
 @ 
 
 \section{Count data}
@@ -714,22 +758,26 @@ $z_\gamma$ is the appropriate quantile of the standard normal.
 
 <<>>=
 count.data <-
-  new.overdispersedPoisson(grp1.count=27,
-                           grp1.overdispersion=1.6,
-                           grp1.time.at.risk=97,
-                           grp2.count=56,
-                           grp2.overdispersion=1.6,
-                           grp2.time.at.risk=82)
+  new.overdispersedPoisson(
+    grp1.count = 27,
+    grp1.overdispersion = 1.6,
+    grp1.time.at.risk = 97,
+    grp2.count = 56,
+    grp2.overdispersion = 1.6,
+    grp2.time.at.risk = 82
+  )
 
 later.study <-
-  new.overdispersedPoissonStudy(duration=56./52,
-                                grp1.size=228,
-                                grp2.size=228,
-                                grp1.overdispersion=1.6,
-                                grp2.overdispersion=1.6,
-                                significance=0.04)
+  new.overdispersedPoissonStudy(
+    duration = 56. / 52,
+    grp1.size = 228,
+    grp2.size = 228,
+    grp1.overdispersion = 1.6,
+    grp2.overdispersion = 1.6,
+    significance = 0.04
+  )
 
-assurance(count.data, later.study, nsim=100000)
+assurance(count.data, later.study, nsim = 100000)
 @ 
 
 An alternate analysis for the Phase III trial is as negative binomial
@@ -753,15 +801,17 @@ fastest%
 
 <<>>=
 later.study <-
-  new.negativeBinomialStudy(duration=56./52,
-                            grp1.size=228,
-                            grp2.size=228,
-                            overdispersion=1.6,
-                            significance=0.04)
+  new.negativeBinomialStudy(
+    duration = 56. / 52,
+    grp1.size = 228,
+    grp2.size = 228,
+    overdispersion = 1.6,
+    significance = 0.04
+  )
 
-assurance(count.data, later.study, nsim=10000)
+assurance(count.data, later.study, nsim = 10000)
 
-assuranceTable(count.data, later.study, nsim=10000)
+assuranceTable(count.data, later.study, nsim = 10000)
 @ 
 
 

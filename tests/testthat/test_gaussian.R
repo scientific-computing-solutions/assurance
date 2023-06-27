@@ -10,15 +10,15 @@ test_that("rsichisq works", {
   samples <- rsichisq(nsim, df, scale)
   expect_equal(length(samples), nsim)
   expectation <- df / (df - 2) * scale
-  expect_equal(mean(samples), expectation, tolerance=1e-2)
+  expect_equal(mean(samples), expectation, tolerance = 1e-2)
 })
 
 
 test_that("new.gaussian works", {
-  expect_error(new.gaussian(10, -1, -1, sd=10))
-  expect_error(new.gaussian(10, 1.1, 1.1, sd=10))
+  expect_error(new.gaussian(10, -1, -1, sd = 10))
+  expect_error(new.gaussian(10, 1.1, 1.1, sd = 10))
   expect_error(new.gaussian(10, "custard", 1.1))
-  got <- new.gaussian(10, 5, 10, sd=15)
+  got <- new.gaussian(10, 5, 10, sd = 15)
   expect_equal(got@size@grp1, 5)
   expect_equal(got@size@grp2, 10)
   expect_equal(got@delta.mu, 10)
@@ -27,7 +27,7 @@ test_that("new.gaussian works", {
 
 
 test_that("common sd sampling works", {
-  got <- new.gaussian(3, 10, 10, sd=8)
+  got <- new.gaussian(3, 10, 10, sd = 8)
   nsim <- 1000000
   sample <- samplePosterior(got, nsim)
   delta.mu <- sample@delta.mu
@@ -35,12 +35,12 @@ test_that("common sd sampling works", {
   expect_equal(got@sigma2, 64)
   expect_equal(length(delta.mu), nsim)
   expect_equal(length(sample@sigma2), nsim)
-  expect_equal(mean(delta.mu), 3, tolerance=1e-2)
+  expect_equal(mean(delta.mu), 3, tolerance = 1e-2)
 })
 
 
 test_that("different sd sampling works", {
-  got <- new.gaussian(3, 20, 50, sd1=4, sd2=10)
+  got <- new.gaussian(3, 20, 50, sd1 = 4, sd2 = 10)
   expect_equal(got@delta.mu, 3)
   expect_equal(got@grp1.sigma2, 16)
   expect_equal(got@grp2.sigma2, 100)
